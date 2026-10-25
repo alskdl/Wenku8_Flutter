@@ -20,19 +20,27 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # 1. 编译 iOS 为未签名的 IPA
-      - name: Build iOS IPA (no codesign)
+      # 1. 编译为 xcarchive（因为没有证书，Xcode 只能走到这一步）
+      - name: Build iOS (no codesign)
         run: flutter build ipa --release --no-codesign
         env:
           FLUTTER_SWIFT_PACKAGE_MANAGER: false
 
-      # 2. 打印出生成的 IPA 文件的真实路径，方便我们在日志里查看
-      - name: Find IPA file path
-        run: find build -name "*.ipa"
+      # 2. 打印一下文件到底藏在哪，方便排查
+      - name: Find generated files
+        run: find build -name "*.app" -o -name "*.xcarchive"
 
-      # 3. 上传产物：使用 **/*.ipa 全局搜索，无论它藏在哪个子文件夹都能抓到
+      # 3. 手动从 archive 中提取 .app 并打包成 ipa
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p Payload
+          # 路径通常是固定的，从 xcarchive 里把 Runner.app 抓出来
+          cp -R build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app Payload/
+          zip -qry Runner-unsigned.ipa Payload
+
+      # 4. 上传打包好的 ipa
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
           name: Runner-unsigned-ipa
-          path: "**/*.ipa"
+          path: Runner-unsigned.ipa
