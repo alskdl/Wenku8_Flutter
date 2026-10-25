@@ -20,15 +20,19 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # 关键改动：使用 flutter build ipa 直接生成未签名 IPA
+      # 1. 编译 iOS 为未签名的 IPA
       - name: Build iOS IPA (no codesign)
         run: flutter build ipa --release --no-codesign
         env:
           FLUTTER_SWIFT_PACKAGE_MANAGER: false
 
-      # 上传产物：直接上传 build/ios/ipa 目录下的文件
+      # 2. 打印出生成的 IPA 文件的真实路径，方便我们在日志里查看
+      - name: Find IPA file path
+        run: find build -name "*.ipa"
+
+      # 3. 上传产物：使用 **/*.ipa 全局搜索，无论它藏在哪个子文件夹都能抓到
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
           name: Runner-unsigned-ipa
-          path: build/ios/ipa/*.ipa
+          path: "**/*.ipa"
