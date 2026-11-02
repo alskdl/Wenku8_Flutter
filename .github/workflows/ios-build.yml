@@ -20,17 +20,31 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # 关键改动：改用 build ios，彻底跳过签名检查，只生成 .app
-      - name: Build iOS (no codesign)
-        run: flutter build ios --release --no-codesign
-        env:
-          FLUTTER_SWIFT_PACKAGE_MANAGER: false
+      - name: Install CocoaPods
+        run: |
+          cd ios
+          pod install
 
-      # 手动将编译好的 .app 打包成标准的 .ipa 结构
+      # 1. 使用 xcodebuild 直接构建归档，显式将团队和签名标识置空
+      - name: Build Xcode Archive (No Codesign)
+        run: |
+          cd ios
+          xcodebuild archive \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath build-output/Runner.xcarchive \
+            DEVELOPMENT_TEAM="" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      # 2. 从归档产物中提取 .app 并打包为 IPA
       - name: Package unsigned IPA
         run: |
           mkdir -p Payload
-          cp -R build/ios/iphoneos/Runner.app Payload/
+          cp -R ios/build-output/Runner.xcarchive/Products/Applications/Runner.app Payload/
           zip -qry Runner-unsigned.ipa Payload
 
       - name: Upload IPA artifact
