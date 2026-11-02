@@ -12,27 +12,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 设置 Java 环境 (安卓编译必需)
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      # 设置 Flutter 环境
+      # 👇 关键修复：将 channel 改为 stable，并明确指定 flutter-version 为 3.41.5
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          flutter-version: '3.41.5'  # 锁定版本，避免自动升级到不兼容的新版
 
       - name: Install dependencies
         run: flutter pub get
 
-      # 编译 APK
       - name: Build APK
         run: flutter build apk --release
 
-      # 上传 APK 产物
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
