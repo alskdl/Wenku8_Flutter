@@ -1,0 +1,40 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 设置 Java 环境 (安卓编译必需)
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      # 设置 Flutter 环境
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # 编译 APK
+      - name: Build APK
+        run: flutter build apk --release
+
+      # 上传 APK 产物
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Runner-android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
