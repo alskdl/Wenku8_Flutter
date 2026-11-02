@@ -6,7 +6,7 @@ on:
 jobs:
   build-ios:
     name: Build Unsigned iOS IPA
-    runs-on: macos-14
+    runs-on: macos-latest
 
     steps:
       - name: Checkout code
@@ -20,33 +20,25 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Install CocoaPods
-        run: |
-          cd ios
-          pod install
+      # 1. 编译为 xcarchive（因为没有证书，Xcode 只能走到这一步）
+      - name: Build iOS (no codesign)
+        run: flutter build ipa --release --no-codesign
+        env:
+          FLUTTER_SWIFT_PACKAGE_MANAGER: false
 
-      # 1. 使用 xcodebuild 直接构建归档，显式将团队和签名标识置空
-      - name: Build Xcode Archive (No Codesign)
-        run: |
-          cd ios
-          xcodebuild archive \
-            -workspace Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release \
-            -sdk iphoneos \
-            -archivePath build-output/Runner.xcarchive \
-            DEVELOPMENT_TEAM="" \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+      # 2. 打印一下文件到底藏在哪，方便排查
+      - name: Find generated files
+        run: find build -name "*.app" -o -name "*.xcarchive"
 
-      # 2. 从归档产物中提取 .app 并打包为 IPA
+      # 3. 手动从 archive 中提取 .app 并打包成 ipa
       - name: Package unsigned IPA
         run: |
           mkdir -p Payload
-          cp -R ios/build-output/Runner.xcarchive/Products/Applications/Runner.app Payload/
+          # 路径通常是固定的，从 xcarchive 里把 Runner.app 抓出来
+          cp -R build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app Payload/
           zip -qry Runner-unsigned.ipa Payload
 
+      # 4. 上传打包好的 ipa
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
